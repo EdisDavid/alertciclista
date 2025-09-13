@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var fallDetector: FallDetector
     private lateinit var emergencySMS: EmergencySMS
     private lateinit var myLocationOverlay: MyLocationNewOverlay
+    private lateinit var mediaPlayer: MediaPlayer
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentLocation: GeoPoint? = null
 
@@ -75,6 +77,11 @@ class MainActivity : ComponentActivity() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         emergencySMS = EmergencySMS(this)
         fallDetector = FallDetector(this) { handleFallDetected() }
+
+        mediaPlayer = MediaPlayer.create(this, R.raw.alarm)
+        mediaPlayer.setOnCompletionListener {
+            it.reset()
+        }
     }
 
     private fun setupMap() {
@@ -199,7 +206,34 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun playAlarmSound() {
+        try {
+            if (::mediaPlayer.isInitialized) {
+                if (mediaPlayer.isPlaying) {
+                    mediaPlayer.stop()
+                }
+                mediaPlayer.reset()
+                val afd = resources.openRawResourceFd(R.raw.alarm) ?: return
+                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                afd.close()
+                mediaPlayer.prepare()
+                mediaPlayer.start()
+            } else {
+                mediaPlayer = MediaPlayer.create(this, R.raw.alarm)
+                mediaPlayer.setOnCompletionListener {
+                    it.reset()
+                 }
+                mediaPlayer.start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Error al reproducir sonido de alarma", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun handleFallDetected() {
+        playAlarmSound()
+
         val contactNumber = sharedPref.getString("contact_number", null)
         val location = currentLocation ?: myLocationOverlay.myLocation
 
@@ -344,5 +378,8 @@ class MainActivity : ComponentActivity() {
             try { fusedLocationClient.removeLocationUpdates(locationCallback) } catch (_: SecurityException) {}
         }
         scope.cancel()
+        if (::mediaPlayer.isInitialized) {
+            mediaPlayer.release()
+        }
     }
 }
