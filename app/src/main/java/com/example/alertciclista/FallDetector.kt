@@ -14,13 +14,18 @@ class FallDetector(
 ) : SensorEventListener {
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private var lastFallTime: Long = 0
-    private var FALL_THRESHOLD = 20.0f
-    private val LOW_THRESHOLD = 2.0f
-    private val MIN_INTERVAL_MS = 5000L
-    private val GRAVITY = 9.81f
+    private val NORMAL_SENSITIVITY_THRESHOLD = 25.0f
+    private var fallThreshold = NORMAL_SENSITIVITY_THRESHOLD
+    private val lowThreshold = 2.0f
+    private val minIntervalMs = 5000L
+    private val gravity = 9.81f
     private var recentValues = mutableListOf<Float>()
-    private val BUFFER_SIZE = 10
+    private val bufferSize = 10
+    private var lastFallTime: Long = 0
+
+    init {
+        adjustSensitivity(1.0f)
+    }
 
     fun start() {
         accelerometer?.let {
@@ -40,20 +45,22 @@ class FallDetector(
         val z = event.values[2]
 
         val magnitude = sqrt(x * x + y * y + z * z)
-        val netMagnitude = abs(magnitude - GRAVITY)
+        val netMagnitude = abs(magnitude - gravity)
 
         recentValues.add(netMagnitude)
-        if (recentValues.size > BUFFER_SIZE) {
+        if (recentValues.size > bufferSize) {
             recentValues.removeAt(0)
         }
 
         val currentTime = System.currentTimeMillis()
 
         if (recentValues.size >= 5) {
-            val hasHighPeak = recentValues.any { it > FALL_THRESHOLD }
+            val hasHighPeak = recentValues.any { it > fallThreshold }
+
             val recentLowValues = recentValues.takeLast(3)
-            val hasLowPeriod = recentLowValues.any { it < LOW_THRESHOLD }
-            val timeIntervalOk = currentTime - lastFallTime > MIN_INTERVAL_MS
+            val hasLowPeriod = recentLowValues.size == 3 && recentLowValues.all { it < lowThreshold }
+
+            val timeIntervalOk = currentTime - lastFallTime > minIntervalMs
 
             if (hasHighPeak && hasLowPeriod && timeIntervalOk) {
                 lastFallTime = currentTime
@@ -68,10 +75,11 @@ class FallDetector(
     }
 
     fun adjustSensitivity(sensitivity: Float) {
-        FALL_THRESHOLD = when {
-            sensitivity < 0.5f -> 15.0f
-            sensitivity > 2.0f -> 30.0f
-            else -> 20.0f * sensitivity
+        fallThreshold = when {
+            sensitivity < 0.5f -> NORMAL_SENSITIVITY_THRESHOLD - 5.0f
+            sensitivity > 1.5f -> NORMAL_SENSITIVITY_THRESHOLD + 10.0f
+            else -> NORMAL_SENSITIVITY_THRESHOLD * sensitivity
         }
+        if (fallThreshold < 10.0f) fallThreshold = 10.0f
     }
 }
