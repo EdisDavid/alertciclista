@@ -1,1 +1,1 @@
-cd
+El proyecto consiste en un sistema IoT para la seguridad de ciclistas, que utiliza un sensor GPS para rastrear la ubicación en tiempo real y un sensor de acelerómetro/giroscopio para detectar caídas o movimientos bruscos. Estos datos se procesan en un microcontrolador, el cual envía alertas al celular del ciclista o a un servidor en la nube mediante una conexión inalámbrica. Con este sistema, se busca mejorar la seguridad y reacción inmediata en caso de accidente, además de ofrecer un seguimiento confiable de rutas y trayectos. 
