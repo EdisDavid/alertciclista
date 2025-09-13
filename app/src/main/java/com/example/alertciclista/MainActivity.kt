@@ -30,27 +30,32 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 class MainActivity : ComponentActivity() {
 
+    // --- Vistas ---
     private lateinit var map: MapView
     private lateinit var emergencyContactText: TextView
     private lateinit var addContactButton: FloatingActionButton
+
+    // --- Servicios ---
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var sharedPref: SharedPreferences
     private lateinit var fallDetector: FallDetector
     private lateinit var emergencySMS: EmergencySMS
     private lateinit var myLocationOverlay: MyLocationNewOverlay
     private lateinit var mediaPlayer: MediaPlayer
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentLocation: GeoPoint? = null
 
     companion object {
         const val PERMISSION_REQUEST_CODE = 100
         const val PICK_CONTACT_REQUEST = 101
-        private val DEFAULT_LOCATION = GeoPoint(-12.0464, -77.0428)
+        private val DEFAULT_LOCATION = GeoPoint(-12.0464, -77.0428) // Lima (ubicación por defecto)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Configuración inicial de osmdroid
         Configuration.getInstance().load(
             applicationContext,
             getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
@@ -58,6 +63,7 @@ class MainActivity : ComponentActivity() {
 
         setContentView(R.layout.activity_main)
 
+        // Inicializar todo
         initializeViews()
         initializeServices()
         setupMap()
@@ -67,6 +73,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initializeViews() {
+        // Referencias a la UI
         map = findViewById(R.id.map)
         emergencyContactText = findViewById(R.id.emergencyContactText)
         addContactButton = findViewById(R.id.addContactButton)
@@ -76,21 +83,24 @@ class MainActivity : ComponentActivity() {
         sharedPref = getSharedPreferences("CiclistaPrefs", Context.MODE_PRIVATE)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         emergencySMS = EmergencySMS(this)
+
+        // Detector de caídas -> ejecuta callback handleFallDetected()
         fallDetector = FallDetector(this) { handleFallDetected() }
 
+        // Cargar sonido de alarma
         mediaPlayer = MediaPlayer.create(this, R.raw.alarm)
-        mediaPlayer.setOnCompletionListener {
-            it.reset()
-        }
+        mediaPlayer.setOnCompletionListener { it.reset() }
     }
 
     private fun setupMap() {
+        // Configuración básica del mapa
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
         map.setBuiltInZoomControls(false)
         map.controller.setZoom(15.0)
         map.controller.setCenter(DEFAULT_LOCATION)
 
+        // Overlay para mostrar ubicación actual
         myLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
         myLocationOverlay.enableMyLocation()
         myLocationOverlay.enableFollowLocation()
@@ -99,6 +109,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadSavedContact() {
+        // Mostrar contacto guardado o aviso si no hay
         val contactName = sharedPref.getString("contact_name", null)
         emergencyContactText.text = if (contactName != null) {
             "📞 Contacto: $contactName"
@@ -108,6 +119,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupEventListeners() {
+        // Botón para elegir contacto
         addContactButton.setOnClickListener { pickContactFromPhone() }
     }
 
@@ -124,6 +136,7 @@ class MainActivity : ComponentActivity() {
         }
 
         if (permissionsToRequest.isEmpty()) {
+            // Si ya tiene permisos -> arrancar servicios
             startLocationUpdates()
             startFallDetection()
         } else {
@@ -132,6 +145,7 @@ class MainActivity : ComponentActivity() {
             }
 
             if (needExplanation) {
+                // Mostrar explicación al usuario
                 AlertDialog.Builder(this)
                     .setTitle("Permisos necesarios")
                     .setMessage(
@@ -148,6 +162,7 @@ class MainActivity : ComponentActivity() {
                     .setCancelable(false)
                     .show()
             } else {
+                // Solicitar permisos directamente
                 ActivityCompat.requestPermissions(
                     this,
                     permissionsToRequest.toTypedArray(),
@@ -160,12 +175,13 @@ class MainActivity : ComponentActivity() {
     private fun startLocationUpdates() {
         if (!hasLocationPermission()) return
 
+        // Configuración de actualización de ubicación
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            2000L
+            2000L // cada 2s
         ).apply {
-            setMinUpdateIntervalMillis(1000L)
-            setMaxUpdateDelayMillis(5000L)
+            setMinUpdateIntervalMillis(1000L) // mínimo 1s
+            setMaxUpdateDelayMillis(5000L)    // máximo 5s
         }.build()
 
         fusedLocationClient.requestLocationUpdates(
@@ -176,23 +192,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startFallDetection() {
+        // Avisar que la detección está activa
         val toast = Toast.makeText(this, "🛡️ Protección activa - DeteCaídas ON", Toast.LENGTH_SHORT)
         toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
         toast.show()
         fallDetector.start()
     }
 
+    // Callback para ubicación en tiempo real
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val location = result.lastLocation ?: return
             val geoPoint = GeoPoint(location.latitude, location.longitude)
             currentLocation = geoPoint
 
+            // Ajustar zoom inicial
             if (map.zoomLevelDouble < 10.0) {
                 map.controller.setZoom(18.0)
                 map.controller.setCenter(geoPoint)
             }
 
+            // Guardar ubicación en memoria
             scope.launch {
                 withContext(Dispatchers.IO) {
                     sharedPref.edit().apply {
@@ -220,9 +240,7 @@ class MainActivity : ComponentActivity() {
                 mediaPlayer.start()
             } else {
                 mediaPlayer = MediaPlayer.create(this, R.raw.alarm)
-                mediaPlayer.setOnCompletionListener {
-                    it.reset()
-                 }
+                mediaPlayer.setOnCompletionListener { it.reset() }
                 mediaPlayer.start()
             }
         } catch (e: Exception) {
@@ -232,6 +250,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleFallDetected() {
+        // Reproducir alarma
         playAlarmSound()
 
         val contactNumber = sharedPref.getString("contact_number", null)
@@ -251,6 +270,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // Enviar SMS con ubicación
         if (location == null) {
             emergencySMS.sendFallAlert(contactNumber, 0.0, 0.0)
         } else {
@@ -270,10 +290,12 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // Abrir selector de contactos
         val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
         startActivityForResult(intent, PICK_CONTACT_REQUEST)
     }
 
+    // Recibir contacto elegido
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -282,6 +304,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Procesar contacto seleccionado
     private suspend fun processContactSelection(contactUri: Uri) {
         withContext(Dispatchers.IO) {
             try {
@@ -299,12 +322,14 @@ class MainActivity : ComponentActivity() {
                             val name = cursor.getString(nameIndex) ?: "Desconocido"
                             val number = cursor.getString(numberIndex) ?: ""
 
+                            // Guardar en SharedPreferences
                             sharedPref.edit().apply {
                                 putString("contact_name", name)
                                 putString("contact_number", number)
                                 apply()
                             }
 
+                            // Actualizar UI
                             withContext(Dispatchers.Main) {
                                 emergencyContactText.text = "📞 Contacto: $name"
                                 val toast = Toast.makeText(this@MainActivity, "✅ Contacto configurado: $name", Toast.LENGTH_SHORT)
@@ -324,6 +349,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Resultado de permisos
     @Suppress("DEPRECATION")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -349,6 +375,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Verificar permisos
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -358,6 +385,7 @@ class MainActivity : ComponentActivity() {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
     }
 
+    // Ciclo de vida
     override fun onResume() {
         super.onResume()
         map.onResume()
