@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import android.provider.ContactsContract
+import android.view.Gravity
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -168,8 +169,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startFallDetection() {
+        val toast = Toast.makeText(this, "🛡️ Protección activa - DeteCaídas ON", Toast.LENGTH_SHORT)
+        toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+        toast.show()
         fallDetector.start()
-        Toast.makeText(this, "🛡️ Protección activa - DeteCaídas ON", Toast.LENGTH_SHORT).show()
     }
 
     private val locationCallback = object : LocationCallback() {
@@ -201,39 +204,35 @@ class MainActivity : ComponentActivity() {
         val location = currentLocation ?: myLocationOverlay.myLocation
 
         if (contactNumber == null) {
-            Toast.makeText(
-                this,
-                "⚠️ CAÍDA DETECTADA pero no hay contacto configurado!",
-                Toast.LENGTH_LONG
-            ).show()
+            val toast = Toast.makeText(this, "⚠️ CAÍDA DETECTADA pero no hay contacto configurado!", Toast.LENGTH_LONG)
+            toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+            toast.show()
             return
         }
 
         if (!emergencySMS.hasSmsPermission()) {
-            Toast.makeText(
-                this,
-                "⚠️ No se puede enviar SMS: permiso SEND_SMS denegado",
-                Toast.LENGTH_LONG
-            ).show()
+            val toast = Toast.makeText(this, "⚠️ No se puede enviar SMS: permiso SEND_SMS denegado", Toast.LENGTH_LONG)
+            toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+            toast.show()
             return
         }
 
         if (location == null) {
-            emergencySMS.sendFallAlert(contactNumber, 0.0, 0.0) // Envía 0,0 si la ubicación no está disponible
+            emergencySMS.sendFallAlert(contactNumber, 0.0, 0.0)
         } else {
             emergencySMS.sendFallAlert(contactNumber, location.latitude, location.longitude)
         }
 
-        Toast.makeText(
-            this,
-            "🚨 CAÍDA DETECTADA!\n📱 Alerta enviada al contacto", // Mensaje más genérico, ya que el SMS se confirma por su propio Toast
-            Toast.LENGTH_LONG
-        ).show()
+        val toast = Toast.makeText(this, "🚨 CAÍDA DETECTADA!\n📱 Alerta enviada al contacto", Toast.LENGTH_LONG)
+        toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+        toast.show()
     }
 
     private fun pickContactFromPhone() {
         if (!hasContactsPermission()) {
-            Toast.makeText(this, "Se necesita permiso para acceder a contactos", Toast.LENGTH_SHORT).show()
+            val toast = Toast.makeText(this, "Se necesita permiso para acceder a contactos", Toast.LENGTH_SHORT)
+            toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+            toast.show()
             return
         }
 
@@ -274,14 +273,18 @@ class MainActivity : ComponentActivity() {
 
                             withContext(Dispatchers.Main) {
                                 emergencyContactText.text = "📞 Contacto: $name"
-                                Toast.makeText(this@MainActivity, "✅ Contacto configurado: $name", Toast.LENGTH_SHORT).show()
+                                val toast = Toast.makeText(this@MainActivity, "✅ Contacto configurado: $name", Toast.LENGTH_SHORT)
+                                toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+                                toast.show()
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Error al seleccionar contacto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                    val toast = Toast.makeText(this@MainActivity, "Error al seleccionar contacto: ${e.localizedMessage}", Toast.LENGTH_SHORT)
+                    toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+                    toast.show()
                 }
             }
         }
@@ -297,13 +300,17 @@ class MainActivity : ComponentActivity() {
             if (allGranted) {
                 startLocationUpdates()
                 startFallDetection()
-                Toast.makeText(this, "✅ Permisos concedidos - App lista", Toast.LENGTH_SHORT).show()
+                val toast = Toast.makeText(this, "✅ Permisos concedidos - App lista", Toast.LENGTH_SHORT)
+                toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+                toast.show()
             } else {
-                Toast.makeText(
+                val toast = Toast.makeText(
                     this,
                     "⚠️ Algunos permisos fueron denegados. La app no puede enviar SMS ni detectar ubicación correctamente.",
                     Toast.LENGTH_LONG
-                ).show()
+                )
+                toast.setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, 200)
+                toast.show()
             }
         }
     }
@@ -320,7 +327,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         map.onResume()
-        if (hasLocationPermission()) fallDetector.start() 
+        if (hasLocationPermission()) fallDetector.start()
     }
 
     override fun onPause() {
