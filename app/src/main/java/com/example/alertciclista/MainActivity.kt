@@ -219,14 +219,14 @@ class MainActivity : ComponentActivity() {
         }
 
         if (location == null) {
-            emergencySMS.sendFallAlert(contactNumber, 0.0, 0.0)
+            emergencySMS.sendFallAlert(contactNumber, 0.0, 0.0) // Envía 0,0 si la ubicación no está disponible
         } else {
             emergencySMS.sendFallAlert(contactNumber, location.latitude, location.longitude)
         }
 
         Toast.makeText(
             this,
-            "🚨 CAÍDA DETECTADA!\n📱 Alerta enviada al contacto",
+            "🚨 CAÍDA DETECTADA!\n📱 Alerta enviada al contacto", // Mensaje más genérico, ya que el SMS se confirma por su propio Toast
             Toast.LENGTH_LONG
         ).show()
     }
@@ -320,7 +320,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         map.onResume()
-        if (hasLocationPermission()) fallDetector.start()
+        if (hasLocationPermission()) fallDetector.start() 
     }
 
     override fun onPause() {
@@ -333,7 +333,9 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         fallDetector.stop()
-        try { fusedLocationClient.removeLocationUpdates(locationCallback) } catch (_: SecurityException) {}
+        if (hasLocationPermission()) {
+            try { fusedLocationClient.removeLocationUpdates(locationCallback) } catch (_: SecurityException) {}
+        }
         scope.cancel()
     }
 }

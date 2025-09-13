@@ -34,5 +34,11 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name=".SmsSentReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.alertciclista.SMS_SENT"/>
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>
